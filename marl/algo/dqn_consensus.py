@@ -6,7 +6,7 @@ from marl.utils import ReplayMemory, Transition, PrioritizedReplayMemory, soft_u
 from marl.utils import LinearDecay
 from torch.nn import MSELoss
 import numpy as np
-from ma_gym.wrappers import Monitor
+# from ma_gym.wrappers import Monitor
 
 
 class DQNConsensus(_Base):
@@ -205,9 +205,9 @@ class DQNConsensus(_Base):
     def test(self, episodes, render=False, log=False, record=False):
         self.model.eval()
         env = self.env
-        if record:
-            env = Monitor(self.env_fn(), directory=os.path.join(self.path, 'recordings'), force=True,
-                          video_callable=lambda episode_id: True)
+        # if record:
+        #     env = Monitor(self.env_fn(), directory=os.path.join(self.path, 'recordings'), force=True,
+        #                   video_callable=lambda episode_id: True)
         with torch.no_grad():
             test_rewards = []
             total_test_steps = 0

@@ -4,7 +4,8 @@ import argparse
 import torch
 import numpy as np
 import marl
-from marl.algo import MADDPG, VDN, IQL
+# from marl.algo import MADDPG, VDN, IQL
+from marl.algo import MADDPG, VDN
 
 from make_env import make_env
 from networks import MADDPGNet, VDNet, IQNet
@@ -18,9 +19,9 @@ if __name__ == '__main__':
                         help="Directory Path to store results (default: %(default)s)")
     parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='Enforces no cuda usage (default: %(default)s)')
-    parser.add_argument('--algo', choices=['maddpg', 'vdn', 'iql'],
-                        help='Training Algorithm', required=True)
-    parser.add_argument('--train', action='store_true', default=False,
+    # parser.add_argument('--algo', default='vdn', choices=['maddpg', 'vdn', 'iql'], help='Training Algorithm', required=True)
+    parser.add_argument('--algo', choices=['maddpg', 'vdn'], help='Training Algorithm', required=True)
+    parser.add_argument('--train', action='store_true', default=True,
                         help='Evaluates the discrete model')
     parser.add_argument('--test', action='store_true', default=False,
                         help='Evaluates the discrete model')
@@ -62,7 +63,7 @@ if __name__ == '__main__':
         vdnet_fn = lambda: VDNet(obs_n, action_space_n)
         algo = VDN(env_fn, vdnet_fn, lr=args.lr, discount=args.discount, batch_size=args.batch_size,
                     device=device, mem_len=10000, tau=0.01, path=args.env_result_dir,
-                    train_episodes=args.train_episodes, episode_max_steps=1000)
+                    train_episodes=args.train_episodes, episode_max_steps=50)  # original is 1000 maximum episode
     elif args.algo == 'iql':
         iqnet = lambda: IQNet()
         algo = IQL(env_fn, iqnet)

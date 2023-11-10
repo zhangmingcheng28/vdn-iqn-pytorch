@@ -43,12 +43,13 @@ class VDN(_Base):
         transitions, indices, weights = self.memory.sample(self.batch_size, beta)
         batch = Transition(*zip(*transitions))
 
-        obs_batch = torch.FloatTensor(list(batch.state)).to(self.device)
-        action_batch = torch.FloatTensor(list(batch.action)).to(self.device)
-        reward_batch = torch.FloatTensor(list(batch.reward)).to(self.device)
-        next_obs_batch = torch.FloatTensor(list(batch.next_state)).to(self.device)
+        obs_batch = torch.FloatTensor(np.array(batch.state)).to(self.device)
+        action_batch = torch.FloatTensor(np.array(batch.action)).to(self.device)
+        reward_batch = torch.FloatTensor(np.array(batch.reward)).to(self.device)
+        next_obs_batch = torch.FloatTensor(np.array(batch.next_state)).to(self.device)
         weights = torch.FloatTensor(weights).to(self.device)
-        non_final_mask = 1 - torch.ByteTensor(list(batch.done)).to(self.device)
+        # non_final_mask = 1 - torch.ByteTensor(list(batch.done)).to(self.device)
+        non_final_mask = ~torch.tensor(batch.done, dtype=torch.bool).to(self.device)
 
         # calc loss
         overall_pred_q, target_q = 0, 0
@@ -100,7 +101,9 @@ class VDN(_Base):
     def _select_action(self, model, obs_n, explore=False):
         """ selects epsilon greedy action for the state """
         if explore and self.exploration.eps > random.random():
-            act_n = self.env.action_space.sample()
+            # act_n = self.env.action_space.sample()
+            act_n = [space.sample() for space in self.env.action_space]
+            # act_n = [np.eye(space.n)[np.random.choice(space.n)] for space in self.env.action_space]
         else:
             act_n = []
             for i in range(model.n_agents):
@@ -119,10 +122,15 @@ class VDN(_Base):
             ep_step = 0
             ep_reward = [0 for _ in range(self.model.n_agents)]
             while not terminal:
-                torch_obs_n = torch.FloatTensor(obs_n).to(self.device).unsqueeze(0)
+                torch_obs_n = torch.FloatTensor(np.array(obs_n)).to(self.device).unsqueeze(0)
                 action_n = self._select_action(self.model, torch_obs_n, explore=True)
 
-                next_obs_n, reward_n, done_n, info = self.env.step(action_n)
+                # -------- amend action_n to one-hot form ---------
+                # so that can be feed into simple_spread environment
+                action_n_adjusted = [np.eye(self.env.action_space[0].n)[idx]for idx in action_n]
+                # --------end of amend action_n to one-hot form ---------
+
+                next_obs_n, reward_n, done_n, info = self.env.step(action_n_adjusted)
                 terminal = all(done_n) or ep_step >= self.episode_max_steps
 
                 loss = self.__update(obs_n, action_n, next_obs_n, reward_n, terminal)

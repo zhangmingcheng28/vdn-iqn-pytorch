@@ -2,7 +2,7 @@ import os
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
-from ma_gym.wrappers import Monitor
+# from ma_gym.wrappers import Monitor
 
 
 class _Base:
@@ -25,7 +25,7 @@ class _Base:
         """
         self.env_fn = env_fn
         self.env = env_fn()
-        self.env.seed(0)  # Todo: Add seed to attributes
+        self.env._seed(777)  # Todo: Add seed to attributes
         self.train_episodes = train_episodes
         self.episode_max_steps = episode_max_steps
 
@@ -82,8 +82,8 @@ class _Base:
         test_scores = []
         best_score = None
         for ep in range(0, self.train_episodes, test_interval):
-            train_score, train_loss = self._train(test_interval)
-            test_score = self.test(5, log=True)
+            train_score, train_loss = self._train(test_interval)  # run for 50 steps?
+            test_score = self.test(5, log=True)  # test for 5 episodes?
             test_scores.append(test_score)
 
             train_score = sum(train_score)
@@ -106,9 +106,9 @@ class _Base:
     def test(self, episodes, render=False, log=False, record=False):
         self.model.eval()
         env = self.env
-        if record:
-            env = Monitor(self.env_fn(), directory=os.path.join(self.path, 'recordings'), force=True,
-                          video_callable=lambda episode_id: True)
+        # if record:
+        #     env = Monitor(self.env_fn(), directory=os.path.join(self.path, 'recordings'), force=True,
+        #                   video_callable=lambda episode_id: True)
         with torch.no_grad():
             test_rewards = []
             total_test_steps=0
@@ -121,10 +121,15 @@ class _Base:
                     if render:
                         env.render()
 
-                    torch_obs_n = torch.FloatTensor(obs_n).to(self.device).unsqueeze(0)
+                    torch_obs_n = torch.FloatTensor(np.array(obs_n)).to(self.device).unsqueeze(0)
                     action_n = self._select_action(self.model, torch_obs_n, explore=False)
 
-                    next_obs_n, reward_n, done_n, info = env.step(action_n)
+                    # -------- amend action_n to one-hot form ---------
+                    # so that can be feed into simple_spread environment
+                    action_n_adjusted = [np.eye(self.env.action_space[0].n)[idx] for idx in action_n]
+                    # --------end of amend action_n to one-hot form ---------
+
+                    next_obs_n, reward_n, done_n, info = env.step(action_n_adjusted)
                     terminal = all(done_n) or step >= self.episode_max_steps
 
                     obs_n = next_obs_n
